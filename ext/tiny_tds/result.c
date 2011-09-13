@@ -232,27 +232,7 @@ static VALUE rb_tinytds_result_fetch_row(VALUE self, ID timezone, int symbolize_
               sec   = date_rec.datesecond,
               msec  = date_rec.datemsecond;
           if (year+month+day+hour+min+sec+msec != 0) {
-            VALUE offset = (timezone == intern_local) ? rwrap->local_offset : opt_zero;
-            #ifdef TINY_TDS_MIN_TIME
-              uint64_t seconds = (year*31557600ULL) + (month*2592000ULL) + (day*86400ULL) + (hour*3600ULL) + (min*60ULL) + sec;
-              /* Use DateTime */
-              if (seconds < TINY_TDS_MIN_TIME || seconds > TINY_TDS_MAX_TIME) {
-                VALUE datetime_sec = INT2NUM(sec);
-                if (msec != 0) {
-                  if ((opt_ruby_186 == 1 && sec < 59) || (opt_ruby_186 != 1)) {
-                    VALUE rational_msec = rb_funcall(rb_cObject, intern_Rational, 2, INT2NUM(msec*1000), opt_onemil);
-                    datetime_sec = rb_funcall(datetime_sec, intern_plus, 1, rational_msec);
-                  }
-                }
-                val = rb_funcall(cDateTime, intern_civil, 7, INT2NUM(year), INT2NUM(month), INT2NUM(day), INT2NUM(hour), INT2NUM(min), datetime_sec, offset);
-                val = rb_funcall(val, intern_new_offset, 1, offset);
-              /* Use Time */
-              } else {
-                val = rb_funcall(rb_cTime, timezone, 7, INT2NUM(year), INT2NUM(month), INT2NUM(day), INT2NUM(hour), INT2NUM(min), INT2NUM(sec), INT2NUM(msec*1000));
-              }
-            #else
-              val = rb_funcall(rb_cTime, timezone, 7, INT2NUM(year), INT2NUM(month), INT2NUM(day), INT2NUM(hour), INT2NUM(min), INT2NUM(sec), INT2NUM(msec*1000));
-            #endif
+            val = rb_funcall(rb_cTime, timezone, 7, INT2NUM(year), INT2NUM(month), INT2NUM(day), INT2NUM(hour), INT2NUM(min), INT2NUM(sec), INT2NUM(msec*1000));
           }
           break;
         }
