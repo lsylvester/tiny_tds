@@ -1,37 +1,6 @@
 
 #include <tiny_tds_ext.h>
 
-// TINY_TDS_MAX_TIME
-
-#if (SIZEOF_INT < SIZEOF_LONG) || defined(HAVE_RUBY_ENCODING_H)
-  /* on 64bit systems or Ruby 1.9 the Time class can handle any value sqlserver can store */
-#else
-  /* On 32bit platforms the maximum date the Time class can handle is 2038-01-19T03:14:07 */
-  /* 2038 years + 1 month + 19 days + 3 hours + 14 minutes + 7 seconds = 64318634047 seconds */
-  /* (2038*31557600) + (1*2592000) + (19*86400) + (3*3600) + (14*60) + 7 */
-  #define TINY_TDS_MAX_TIME 64318634047ULL
-#endif
-
-
-// TINY_TDS_MIN_TIME
-
-#if defined(HAVE_RUBY_ENCODING_H)
-  /* In Ruby 1.9 the Time class can handle any value sqlserver can store */
-#elif SIZEOF_INT < SIZEOF_LONG
-  /* In 64 bit Ruby 1.8 the Time class can handle any values sqlserver can store in datetime columns. datetime2 support coming soon.
-  /* 64bit Ruby 1.8 */
-  /* 0139-1-1 00:00:00 UTC */
-#elif defined(NEGATIVE_TIME_T)
-  /* 1901-12-13 20:45:52 UTC : The oldest time in 32-bit signed time_t. */
-  /* (1901*31557600) + (12*2592000) + (13*86400) + (20*3600) + (45*60) + 52 */
-  #define TINY_TDS_MIN_TIME 60023299552ULL
-#else
-  /* 1970-01-01 00:00:01 UTC : The Unix epoch - the oldest time in portable time_t. */
-  /* (1970*31557600) + (1*2592000) + (1*86400) + (0*3600) + (0*60) + 1 */
-  #define TINY_TDS_MIN_TIME 62171150401ULL
-#endif
-
-
 // File Types/Vars
 
 VALUE cTinyTdsResult;
