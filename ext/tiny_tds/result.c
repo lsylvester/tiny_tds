@@ -1,43 +1,6 @@
 
 #include <tiny_tds_ext.h>
 
-// TINY_TDS_MAX_TIME
-
-#if (SIZEOF_INT < SIZEOF_LONG) || defined(HAVE_RUBY_ENCODING_H)
-  /* On 64bit platforms we can handle dates way outside 2038-01-19T03:14:07 */
-  /* (10000*31557600) + (12*2592000) + (31*86400) + (11*3600) + (59*60) + 59 */
-  #define TINY_TDS_MAX_TIME 315607276799ULL
-#else
-  /* On 32bit platforms the maximum date the Time class can handle is 2038-01-19T03:14:07 */
-  /* 2038 years + 1 month + 19 days + 3 hours + 14 minutes + 7 seconds = 64318634047 seconds */
-  /* (2038*31557600) + (1*2592000) + (19*86400) + (3*3600) + (14*60) + 7 */
-  #define TINY_TDS_MAX_TIME 64318634047ULL
-#endif
-
-
-// TINY_TDS_MIN_TIME
-
-#if defined(HAVE_RUBY_ENCODING_H)
-  /* Ruby 1.9 */
-  /* 0000-1-1 00:00:00 UTC */
-  /* (0*31557600) + (1*2592000) + (1*86400) + (0*3600) + (0*60) + 0 */
-  #define TINY_TDS_MIN_TIME 2678400ULL
-#elif SIZEOF_INT < SIZEOF_LONG
-  /* 64bit Ruby 1.8 */
-  /* 0139-1-1 00:00:00 UTC */
-  /* (139*31557600) + (1*2592000) + (1*86400) + (0*3600) + (0*60) + 0 */
-  #define TINY_TDS_MIN_TIME 4389184800ULL
-#elif defined(NEGATIVE_TIME_T)
-  /* 1901-12-13 20:45:52 UTC : The oldest time in 32-bit signed time_t. */
-  /* (1901*31557600) + (12*2592000) + (13*86400) + (20*3600) + (45*60) + 52 */
-  #define TINY_TDS_MIN_TIME 60023299552ULL
-#else
-  /* 1970-01-01 00:00:01 UTC : The Unix epoch - the oldest time in portable time_t. */
-  /* (1970*31557600) + (1*2592000) + (1*86400) + (0*3600) + (0*60) + 1 */
-  #define TINY_TDS_MIN_TIME 62171150401ULL
-#endif
-
-
 // File Types/Vars
 
 VALUE cTinyTdsResult;
@@ -239,26 +202,20 @@ static VALUE rb_tinytds_result_fetch_row(VALUE self, ID timezone, int symbolize_
               msec  = date_rec.datemsecond;
           if (year+month+day+hour+min+sec+msec != 0) {
             VALUE offset = (timezone == intern_local) ? rwrap->local_offset : opt_zero;
-            uint64_t seconds = (year*31557600ULL) + (month*2592000ULL) + (day*86400ULL) + (hour*3600ULL) + (min*60ULL) + sec;
             /* Use DateTime */
-            if (seconds < TINY_TDS_MIN_TIME || seconds > TINY_TDS_MAX_TIME) {
-              VALUE datetime_sec = INT2NUM(sec);
-              if (msec != 0) {
-                if ((opt_ruby_186 == 1 && sec < 59) || (opt_ruby_186 != 1)) {
-                  #ifdef HAVE_RUBY_ENCODING_H
-                    VALUE rational_msec = rb_Rational2(INT2NUM(msec*1000), opt_onemil);
-                  #else
-                    VALUE rational_msec = rb_funcall(rb_cObject, intern_Rational, 2, INT2NUM(msec*1000), opt_onemil);
-                  #endif
-                  datetime_sec = rb_funcall(datetime_sec, intern_plus, 1, rational_msec);
-                }
+            VALUE datetime_sec = INT2NUM(sec);
+            if (msec != 0) {
+              if ((opt_ruby_186 == 1 && sec < 59) || (opt_ruby_186 != 1)) {
+                #ifdef HAVE_RUBY_ENCODING_H
+                  VALUE rational_msec = rb_Rational2(INT2NUM(msec*1000), opt_onemil);
+                #else
+                  VALUE rational_msec = rb_funcall(rb_cObject, intern_Rational, 2, INT2NUM(msec*1000), opt_onemil);
+                #endif
+                datetime_sec = rb_funcall(datetime_sec, intern_plus, 1, rational_msec);
               }
-              val = rb_funcall(cDateTime, intern_civil, 7, INT2NUM(year), INT2NUM(month), INT2NUM(day), INT2NUM(hour), INT2NUM(min), datetime_sec, offset);
-              val = rb_funcall(val, intern_new_offset, 1, offset);
-            /* Use Time */
-            } else {
-              val = rb_funcall(rb_cTime, timezone, 7, INT2NUM(year), INT2NUM(month), INT2NUM(day), INT2NUM(hour), INT2NUM(min), INT2NUM(sec), INT2NUM(msec*1000));
             }
+            val = rb_funcall(cDateTime, intern_civil, 7, INT2NUM(year), INT2NUM(month), INT2NUM(day), INT2NUM(hour), INT2NUM(min), datetime_sec, offset);
+            val = rb_funcall(val, intern_new_offset, 1, offset);
           }
           break;
         }
